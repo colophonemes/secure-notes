@@ -1,10 +1,9 @@
 import React, { Component } from 'react';
 // import {Button} from 'react-bootstrap'
 // import FontAwesome from 'react-fontawesome'
-import Dropbox from 'dropbox'
 import {withCookies} from 'react-cookie'
 import {withRouter} from 'react-router-dom'
-
+import {withDropbox} from 'providers/Dropbox'
 import styled from 'styled-components'
 import {Table, Button} from 'react-bootstrap'
 import FontAwesome from 'react-fontawesome'
@@ -18,7 +17,7 @@ const EntryRow = styled.tr`
     background-color: #DDD;
   }
   &.uneditable-file {
-    cursor: disabled;
+    cursor: not-allowed;
     color: #999;
     font-style: italic;
     background-color: #FFF;
@@ -29,54 +28,37 @@ const CurrentPathTitle = styled.h3`
   font-family: sans-serif;
   display: inline-block;
   float: left;
-  margin: 0 15px 30px 0;
+  margin: 0 0 30px 0;
 `
 
 const CurrentPathActionsWrapper = styled.div`
   float:left;
+  .btn {
+    margin-left: 15px;
+  }
 `
 
 const {REACT_APP_COOKIE_PREFIX} = process.env
-const DROPBOX_COOKIE = `${REACT_APP_COOKIE_PREFIX}_dropbox_access_token`
 const DROPBOX_LAST_PATH_COOKIE = `${REACT_APP_COOKIE_PREFIX}_dropbox_last_path`
 
 class DropboxSelectFile extends Component {
-
-  createClient = (cb) => {
-    const {cookies, history} = this.props
-    const accessToken = cookies.get(DROPBOX_COOKIE)
-    // no access token? get out of here
-    if (!accessToken) return history.push(`/dropbox/authenticate`)
-    var dbx = new Dropbox.Dropbox({ accessToken })
-    this.setState({dbx}, cb)
-  }
 
   getEntriesAtPath = (path) => {
     this.setState({
       loading: true
     }, () => {
-      const {dbx} = this.state
+      const {dbx} = this.props
       return dbx.filesListFolder({path})
-        .then(response => {
-          console.log(response)
-          this.setState({
-            entries: response.entries
-          })
-        })
+        .then(response => this.setState({
+          entries: response.entries
+        }))
         .catch(this.handleDropboxError)
         .then(() => this.setState({loading: false}))
     })
   }
 
-  setCurrentPath = (currentPath) => {
-    const {cookies} = this.props
-    if (currentPath === '/') currentPath = ''
-    cookies.set(DROPBOX_LAST_PATH_COOKIE, currentPath)
-    this.setState({currentPath})
-  }
-
-  getCurrentEntryMetadata = (state = this.state) => {
-    const {dbx, currentPath} = state
+  getCurrentEntryMetadata = (currentPath) => {
+    const {dbx} = this.props
     if (!currentPath) {
       return this.setState({currentEntry: null})
     }
@@ -85,17 +67,34 @@ class DropboxSelectFile extends Component {
       .catch(this.handleDropboxError)
   }
 
-  handleClickEntry = (entry) => () => {
+  loadDataAtPath = (path) => Promise.all([
+    this.getEntriesAtPath(path),
+    this.getCurrentEntryMetadata(path)
+  ])
+
+  setCurrentPath = (currentPath) => {
     const {cookies} = this.props
-    const type = getEntryType(entry)
+    if (currentPath === '/') currentPath = ''
+    cookies.set(DROPBOX_LAST_PATH_COOKIE, currentPath)
+    this.setState({currentPath})
+  }
+
+
+  handleClickEntry = (entry) => () => {
+    const type = getEntryFileType(entry)
     switch (type) {
       case 'folder':
         // save the last folder we've been in to to props
         return this.setCurrentPath(entry.path_lower)
-      case 'file':
-      default:
-        console.log('got file')
+      case 'securenote':
+        this.editFile(entry)
+        break
+      case 'text-file':
+        console.log('got text file')
         console.log(entry)
+        break
+      default:
+        // do nothing
     }
   }
 
@@ -104,11 +103,14 @@ class DropboxSelectFile extends Component {
     this.setCurrentPath(dirname(currentPath))
   }
 
+  handleRefreshEntries = () => this.getEntriesAtPath(this.state.currentPath)
+
   handleCreateNote = () => {
-    const {currentPath, entries, dbx} = this.state
+    const {dbx} = this.props
+    const {currentPath, entries} = this.state
     const getUniqueNotePath = (index = 0) => {
       const notePath = `${currentPath}/Untitled Note${index ? ` ${index}` : ''}.md.securenote`
-      if (entries.find(entry => entry.path_lower === notePath)) return getUniqueNotePath(index + 1)
+      if (entries.find(entry => entry.path_lower === notePath.toLowerCase())) return getUniqueNotePath(index + 1)
       return notePath
     }
     // check for filename collisions
@@ -118,9 +120,7 @@ class DropboxSelectFile extends Component {
       contents: '',
       path: notePath
     })
-      .then(response => {
-        console.log(response)
-      })
+      .then(this.editFile)
       .catch(this.handleDropboxError)
   }
 
@@ -129,19 +129,24 @@ class DropboxSelectFile extends Component {
     this.setState({dropboxError: err.message || err.toString()})
   }
 
+  editFile = (entry) => {
+    const {history} = this.props
+    history.push(`/editor?file=${entry.path_lower}`)
+  }
+
   componentWillUpdate (nextProps, nextState) {
     const {currentPath} = this.state
     const {currentPath: nextCurrentPath} = nextState
     if (nextCurrentPath !== currentPath) {
-      this.getEntriesAtPath(nextCurrentPath)
-      this.getCurrentEntryMetadata(nextState)
+      return this.loadDataAtPath(nextCurrentPath)
     }
   }
 
   componentWillMount = () => {
     const {cookies} = this.props
     const initialPath = cookies.get(DROPBOX_LAST_PATH_COOKIE) || ''
-    this.createClient(() => this.setCurrentPath(initialPath))
+    this.setCurrentPath(initialPath)
+    this.loadDataAtPath(initialPath)
   }
 
   render = () => {
@@ -149,9 +154,13 @@ class DropboxSelectFile extends Component {
     if (loading) return <LoadingSpinner />
     if (!entries) return <p>No files!</p>
     return <div>
-      <CurrentPathTitle>{currentEntry ? currentEntry.path_display : '/'}</CurrentPathTitle>
+      <CurrentPathTitle>
+        <FontAwesome name='dropbox' />{' '}
+        {currentEntry ? currentEntry.path_display : <em>Your Dropbox</em>}
+      </CurrentPathTitle>
       <CurrentPathActionsWrapper>
         <Button bsStyle='primary' onClick={this.handleCreateNote}>Create note here <FontAwesome name='plus' /></Button>
+        <Button bsStyle='default' onClick={this.handleRefreshEntries}><FontAwesome name='refresh' /></Button>
       </CurrentPathActionsWrapper>
       <EntriesTable
         Entries={entries}
@@ -166,27 +175,22 @@ class DropboxSelectFile extends Component {
 const EntriesTable = ({Entries, onClickEntry, onClickEntryParent, currentPath}) => <Table>
   <thead>
     <tr>
-      <th>Type</th>
       <th>Name</th>
-      <th>Actions</th>
     </tr>
   </thead>
   <tbody>
     {!!currentPath && <EntryRow onClick={onClickEntryParent}>
-      <td><FontAwesome name='arrow-left' /></td>
-      <td colSpan='2'>../ (up one level)</td>
+      <td><FontAwesome name='arrow-left' /> <em>back to parent folder</em></td>
     </EntryRow>}
+    {!Entries.length && <tr><td><em>(folder empty)</em></td></tr>}
     {Entries.map(entry => {
       const fileType = getEntryFileType(entry)
-      console.log(fileType)
       return <EntryRow
         key={entry.id}
         onClick={onClickEntry(entry)}
         className={fileType}
       >
-        <td><FontAwesome name={getIconFromFileType(fileType)} /></td>
-        <td>{entry.name}</td>
-        <td>{fileType === 'text-file' && <Button>Encrypt <FontAwesome name='lock' /></Button>}</td>
+        <td><EntryIcon fileType={fileType} /> {entry.name}</td>
       </EntryRow>
     })}
   </tbody>
@@ -207,13 +211,6 @@ const getEntryFileType = (entry) => {
   }
 }
 
-const getIconFromFileType = (fileType) => {
-  switch (fileType) {
-    case 'folder':
-      return 'folder'
-    default:
-      return 'file'
-  }
-}
+const EntryIcon = ({fileType}) => <FontAwesome name={fileType === 'folder' ? 'folder' : 'file-o'} />
 
-export default withRouter(withCookies(DropboxSelectFile))
+export default withDropbox(withCookies(withRouter(DropboxSelectFile)))

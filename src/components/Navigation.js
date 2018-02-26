@@ -2,13 +2,14 @@ import React from 'react';
 import { Route, Link, NavLink } from "react-router-dom"
 import { Navbar, Nav } from 'react-bootstrap'
 import FontAwesome from 'react-fontawesome'
-import {Home, Dropbox} from 'containers'
-
+import {Home, Editor, Dropbox} from 'containers'
 // Router
 const Routes = () => (
   <div>
     <Route exact path='/' component={Home} />
-    <Route path='/dropbox' component={Dropbox} />
+    <Route path='/select-file' component={Dropbox.SelectFile} />
+    <Route path='/editor' component={Editor} />
+    <Route path='/dropbox/authenticate' component={Dropbox.Authenticate} />
   </div>
 )
 
@@ -21,8 +22,8 @@ const Navigation = () => (
       </Navbar.Brand>
     </Navbar.Header>
     <Nav>
-      <LinkNavItem to="/dropbox">
-        Connect Dropbox <FontAwesome name='dropbox' />
+      <LinkNavItem to="/select-file">
+        Open Note <FontAwesome name='dropbox' />
       </LinkNavItem>
     </Nav>
   </Navbar>

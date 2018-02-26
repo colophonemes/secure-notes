@@ -1,3 +1,7 @@
 body {
   margin: 80px 0 30px;
 }
+
+.center {
+  text-align: center;
+}

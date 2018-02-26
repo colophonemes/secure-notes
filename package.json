@@ -3,7 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "draft-js": "^0.10.5",
+    "draft-js-markdown-shortcuts-plugin": "^0.4.1",
+    "draft-js-plugins-editor": "^2.0.4",
     "dropbox": "^3.0.5",
+    "markdown-draft-js": "^0.6.2",
     "path": "^0.12.7",
     "react": "^16.2.0",
     "react-bootstrap": "^0.32.1",

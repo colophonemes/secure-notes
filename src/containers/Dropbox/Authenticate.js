@@ -1,13 +1,8 @@
 import React, { Component } from 'react';
-import {Button} from 'react-bootstrap'
-import FontAwesome from 'react-fontawesome'
-import Dropbox from 'dropbox'
 import {withCookies} from 'react-cookie'
 import {withRouter} from 'react-router-dom'
 
 const {
-  REACT_APP_DROPBOX_CLIENT_ID,
-  REACT_APP_BASE_URL,
   REACT_APP_COOKIE_PREFIX
 } = process.env
 
@@ -23,28 +18,17 @@ const getHashParams = (hash) => hash
   }, {})
 
 class DropboxAuth extends Component {
-    constructor (props) {
-      super(props)
-      var dbx = new Dropbox.Dropbox({ clientId: REACT_APP_DROPBOX_CLIENT_ID })
-      var authUrl = dbx.getAuthenticationUrl(`${REACT_APP_BASE_URL}/${props.match.url}/authenticate`)
-      this.state = {authUrl}
-    }
     // Parses the url and gets the access token if it is in the urls hash
     checkToken (props) {
       const {hash} = window.location
-      const {cookies, history, match} = props
+      const {cookies, history} = props
       // try to get the hash from cookies
-      let accessToken = cookies.get(DROPBOX_COOKIE)
-      console.log(accessToken)
-      if (hash) {
-        // if we've got a hash, use that as the access token
-        accessToken = getHashParams(hash).access_token
-        cookies.set(DROPBOX_COOKIE, accessToken)
-      }
-      // if we've got an access token, go to the file selector
-      if (accessToken) {
-        history.push(`${match.url}/select-file`)
-      }
+      if (!hash) return
+      const accessToken = getHashParams(hash).access_token
+      if (!accessToken) return
+      // if we've got an access token, save it, then redirect to the file selector
+      cookies.set(DROPBOX_COOKIE, accessToken, {path: '/'})
+      history.push(`/select-file`)
     }
 
     componentWillMount = () => {
@@ -55,12 +39,7 @@ class DropboxAuth extends Component {
       this.checkToken(newProps)
     }
 
-    render = () => {
-      const {authUrl} = this.state
-      return <Button href={authUrl} bsStyle='primary'>
-        Link Dropbox Account <FontAwesome name='dropbox' />
-      </Button>
-    }
+    render = () => <p>Saving Dropbox token...</p>
 }
 
 export default withRouter(withCookies(DropboxAuth))
