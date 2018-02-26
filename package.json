@@ -6,6 +6,7 @@
     "draft-js": "^0.10.5",
     "draft-js-markdown-shortcuts-plugin": "^0.4.1",
     "draft-js-plugins-editor": "^2.0.4",
+    "draft-js-richbuttons-plugin": "^2.2.0",
     "dropbox": "^3.0.5",
     "markdown-draft-js": "^0.6.2",
     "path": "^0.12.7",

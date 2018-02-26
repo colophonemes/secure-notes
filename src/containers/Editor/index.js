@@ -18,9 +18,13 @@ import {
   convertFromRaw, convertToRaw
 } from 'draft-js'
 import {markdownToDraft, draftToMarkdown} from 'markdown-draft-js'
-import createMarkdownShortcutsPlugin from 'draft-js-markdown-shortcuts-plugin';
+import createRichButtonsPlugin from 'draft-js-richbuttons-plugin'
+// import createMarkdownShortcutsPlugin from 'draft-js-markdown-shortcuts-plugin';
+const richButtonsPlugin = createRichButtonsPlugin()
+const {BoldButton, ItalicButton, H2Button, ULButton, OLButton} = richButtonsPlugin
 const plugins = [
-  createMarkdownShortcutsPlugin()
+  richButtonsPlugin,
+  // createMarkdownShortcutsPlugin()
 ]
 
 
@@ -114,6 +118,16 @@ class Editor extends Component {
     return <div>
       <Row>
         <Col md={8} mdOffset={2}>
+          <div>
+            <div className="myToolbar">
+              <BoldButton/>
+              <ItalicButton/>
+
+              <H2Button/>
+              <ULButton/>
+              <OLButton/>
+            </div>
+          </div>
           <DraftEditor
             editorState={editorState}
             onChange={this.handleDraftEditorChange}
