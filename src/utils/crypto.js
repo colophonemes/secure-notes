@@ -7,10 +7,16 @@
 // See LICENSE file for details.
 
 
-const subtleCrypto = window.crypto.subtle
-
 const HEADER_DELIMITER = '================'
+// TODO - add the ability to add a custom salt
 const RANDOM_SALT = 'Q^^j(kolegtjqK=6lx1IXc%kxZJk6CDU';
+
+
+const subtleCrypto = window.crypto && window.crypto.subtle
+  ? window.crypto.subtle
+  : undefined
+
+if (!subtleCrypto) throw new Error('Browser does not support WebCrypto')
 
 async function deriveKey (password) {
   const iterations = 1000;
@@ -36,8 +42,7 @@ async function deriveKey (password) {
   )
 }
 
-async function encrypt (plaintext, password) {
-  const key = await deriveKey(password)
+async function encrypt (plaintext, key) {
   const iv = window.crypto.getRandomValues(new Uint8Array(16))
   const encryptedData = await subtleCrypto.encrypt(
     {
@@ -52,15 +57,13 @@ async function encrypt (plaintext, password) {
     arrayBufferToHexString(iv),
     HEADER_DELIMITER,
     arrayBufferToHexString(encryptedData)
-  ].join('\n')
+  ].join('')
 }
 
-async function decrypt (data, password) {
-  const key = await deriveKey(password)
+async function decrypt (data, key) {
   const parts = data.split(HEADER_DELIMITER).map(p => p.trim())
   const iv = hexStringToArrayBuffer(parts[0])
   const message = hexStringToArrayBuffer(parts[1])
-  console.log(iv.length, message.length)
   const decryptedData = await subtleCrypto.decrypt(
     {
       name: "AES-CBC",
@@ -112,4 +115,4 @@ function hexStringToArrayBuffer(str) {
   return new Uint8Array(a);
 }
 
-export {encrypt, decrypt}
+export {deriveKey, encrypt, decrypt}

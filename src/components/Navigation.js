@@ -18,7 +18,7 @@ const Navigation = () => (
   <Navbar fixedTop>
     <Navbar.Header>
       <Navbar.Brand>
-        <Link to="/">Secure Notes <FontAwesome name='lock' /></Link>
+        <Link to="/"><FontAwesome name='lock' /> Secure Notes</Link>
       </Navbar.Brand>
     </Navbar.Header>
     <Nav>

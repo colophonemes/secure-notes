@@ -5,11 +5,15 @@ import {withCookies} from 'react-cookie'
 import {withRouter} from 'react-router-dom'
 import {withDropbox} from 'providers/Dropbox'
 
+import {PasswordEditorModal} from 'components/PasswordEditor'
+
 import {Row, Col, Button} from 'react-bootstrap'
+import ButtonLink from 'components/ButtonLink'
 import FontAwesome from 'react-fontawesome'
 import LoadingSpinner from 'components/LoadingSpinner'
+import styled from 'styled-components'
 
-import {encrypt, decrypt} from './encryption'
+import {deriveKey, encrypt, decrypt} from 'utils/crypto'
 
 import DraftEditor from 'draft-js-plugins-editor';
 import {
@@ -27,15 +31,26 @@ const plugins = [
   // createMarkdownShortcutsPlugin()
 ]
 
+const DraftEditorWrapper = styled.div`
+  .DraftEditor-root {
+    border: 1px solid #DDD;
+    padding: 15px;
+    margin: 5px 0 15px;
+  }
+`
+
+const initialState = {
+  editorState: DraftEditorState.createEmpty(),
+  encryptedContents: null,
+  key: null,
+  showPasswordEditor: true
+}
 
 class Editor extends Component {
 
   constructor (props) {
     super(props)
-    this.state = {
-      editorState: DraftEditorState.createEmpty(),
-      password: 'super-secret-password'
-    }
+    this.state = initialState
   }
 
   getFilePath = () => {
@@ -63,15 +78,15 @@ class Editor extends Component {
   }
 
   getEncryptedContents = () => {
-    const {editorState, password} = this.state
+    const {editorState, key} = this.state
     const markdownString = draftToMarkdown(convertToRaw(editorState.getCurrentContent()))
-    console.log(markdownString)
-    return encrypt(markdownString, password)
+    return encrypt(markdownString, key)
   }
 
-  getDecryptedContents = (state = this.state) => {
-    const {encryptedContents, password} = state
-    return decrypt(encryptedContents, password)
+  getDecryptedContents = async (state = this.state) => {
+    const {encryptedContents, key} = state
+    if (!encryptedContents || !encryptedContents.trim()) return ''
+    return await decrypt(encryptedContents, key)
   }
 
   handleDraftEditorChange = (editorState) => this.setState({editorState})
@@ -95,8 +110,13 @@ class Editor extends Component {
     })
   }
 
-  componentWillMount () {
-    this.loadFile()
+  handleSetKey = (key) =>  {
+    if (key instanceof CryptoKey) this.setState({key, showPasswordEditor: false}, this.loadFile)
+  }
+
+  handleCancel = () => {
+    const {history} = this.props
+    history.push('/select-file')
   }
 
   componentWillUpdate (nextProps, nextState) {
@@ -109,12 +129,15 @@ class Editor extends Component {
             editorState
           })
         })
+        .catch(err => {
+          this.setState(initialState)
+        })
     }
   }
 
   render () {
-    const {loading, saving, editorState} = this.state
-    if (loading) return <LoadingSpinner />
+    const {loading, saving, editorState, showPasswordEditor} = this.state
+    if (loading || saving) return <LoadingSpinner />
     return <div>
       <Row>
         <Col md={8} mdOffset={2}>
@@ -128,19 +151,22 @@ class Editor extends Component {
               <OLButton/>
             </div>
           </div>
-          <DraftEditor
-            editorState={editorState}
-            onChange={this.handleDraftEditorChange}
-            readOnly={saving}
-            plugins={plugins}
-          />
+          <DraftEditorWrapper>
+            <DraftEditor
+              editorState={editorState}
+              onChange={this.handleDraftEditorChange}
+              readOnly={saving}
+              plugins={plugins}
+            />
+          </DraftEditorWrapper>
           <Row className='center'>
-            <Col md={6} mdOffset={3}>
+            <Col sm={6}>
               <Button block bsStyle='primary' onClick={this.handleSave}>Save <FontAwesome name='check' /></Button>
             </Col>
           </Row>
         </Col>
       </Row>
+      <PasswordEditorModal show={showPasswordEditor} onSubmit={this.handleSetKey} onCancel={this.handleCancel} />
     </div>
   }
 }
