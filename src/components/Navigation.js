@@ -2,6 +2,7 @@ import React from 'react';
 import { Route, Link, NavLink } from "react-router-dom"
 import { Navbar, Nav } from 'react-bootstrap'
 import FontAwesome from 'react-fontawesome'
+import Logo from 'components/Logo'
 import {Home, Editor, Dropbox} from 'containers'
 // Router
 const Routes = () => (
@@ -18,7 +19,7 @@ const Navigation = () => (
   <Navbar fixedTop>
     <Navbar.Header>
       <Navbar.Brand>
-        <Link to="/"><FontAwesome name='lock' /> Secure Notes</Link>
+        <Link to="/"><Logo width={16} /> Secure Notes</Link>
       </Navbar.Brand>
     </Navbar.Header>
     <Nav>

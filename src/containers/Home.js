@@ -3,12 +3,21 @@ import {Row, Col} from 'react-bootstrap'
 import ButtonLink from 'components/ButtonLink'
 import styled from 'styled-components'
 import FontAwesome from 'react-fontawesome'
+import Logo from 'components/Logo'
+
+const TitleWrapper = styled.div`
+  text-align: center;
+  .site-title-logo {
+    width: 46px;
+    margin-bottom: -10px;
+  }
+`
 
 const SiteTitle = styled.h1`
-  text-align: center;
   font-size: 40px;
   text-decoration: underline;
-  margin-bottom: 30px;
+  margin: 0 0 30px 5px;
+  display: inline-block;
 `
 
 class Home extends Component {
@@ -16,7 +25,11 @@ class Home extends Component {
     return <div>
       <Row>
         <Col md={6} mdOffset={3}>
-          <SiteTitle><FontAwesome name='lock' /> Secure Notes</SiteTitle>
+          <TitleWrapper>
+            <Logo className='site-title-logo' />
+            <SiteTitle>Secure Notes</SiteTitle>
+          </TitleWrapper>
+
           <p>A browser-based application for writing encrypted notes.</p>
           <p><strong>Simple:</strong> Store documents in a Dropbox folder.</p>
           <p><strong>Shareable:</strong> Just share your Dropbox folder, easy!</p>
